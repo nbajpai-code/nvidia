@@ -42,3 +42,4 @@ This certification is designed for IT professionals new to AI operations, focusi
 - **NVIDIA Ecosystem**: NeMo, TensorRT, Triton Inference Server, CUDA.
 - **Foundations**: ML/DL basics, GPU architecture, Python libraries (PyTorch, TensorFlow).
 - **Deployment**: Kubernetes, Docker, MLOps practices.
+- N V C E R T E O Y 5 0

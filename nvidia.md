@@ -83,3 +83,5 @@ This certification is designed for IT professionals new to AI operations, focusi
 - https://github.com/SKTBrain/DiscoGAN
 - https://arxiv.org/pdf/1611.04076.pdf
 - https://github.com/xudonmao/LSGAN
+
+- [Neptune AI blogs](https://neptune.ai/blog)

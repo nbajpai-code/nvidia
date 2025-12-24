@@ -65,3 +65,21 @@ This certification is designed for IT professionals new to AI operations, focusi
 - **wikipedia.org
 - **geeksforgeeks.org
 - **decube.io
+
+- https://github.com/hindupuravinash/the-gan-zoo
+- https://arxiv.org/pdf/1703.10593.pdf
+- https://www.tensorflow.org/tutorials/generative/cyclegan
+- https://thispersondoesnotexist.com/
+- https://arxiv.org/pdf/1812.04948.pdf
+- https://github.com/NVlabs/stylegan
+- https://arxiv.org/pdf/1601.06759.pdf#page=9&zoom=100,0,0
+- https://arxiv.org/pdf/1601.06759.pdf
+- https://github.com/carpedm20/pixel-rnn-tensorflow
+- https://arxiv.org/pdf/1605.05396.pdf
+- https://github.com/paarthneekhara/text-to-image
+- https://arxiv.org/pdf/1703.05192.pdf
+- https://github.com/SKTBrain/DiscoGAN
+- https://arxiv.org/pdf/1703.05192.pdf
+- https://github.com/SKTBrain/DiscoGAN
+- https://arxiv.org/pdf/1611.04076.pdf
+- https://github.com/xudonmao/LSGAN

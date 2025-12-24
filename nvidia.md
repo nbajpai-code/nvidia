@@ -43,3 +43,25 @@ This certification is designed for IT professionals new to AI operations, focusi
 - **Foundations**: ML/DL basics, GPU architecture, Python libraries (PyTorch, TensorFlow).
 - **Deployment**: Kubernetes, Docker, MLOps practices.
 - N V C E R T E O Y 5 0
+
+
+## Resources
+
+- **neptune.ai
+- **medium.com
+- **dev.to
+- **github.io
+- **geeksforgeeks.org
+- **wikipedia.org
+- **ibm.com
+- **amazon.com
+- **viso.ai
+- **tooli.qa
+- **hyqoo.com
+- **leewayhertz.com
+- **ibm.com
+- **geeksforgeeks.org
+- **amazon.com
+- **wikipedia.org
+- **geeksforgeeks.org
+- **decube.io

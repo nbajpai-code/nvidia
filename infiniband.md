@@ -14,102 +14,122 @@ This guide is designed for anyone who **installs, configures, manages, troublesh
 
 InfiniBand (IB) is an industry-standard specification that defines an input/output architecture used to interconnect servers, communications infrastructure equipment, storage, and embedded systems.
 
-### Key Advantages
-*   **High Throughput**: Multi-gigabit speeds (NDR 400Gb/s and beyond).
-*   **Ultra-Low Latency**: Microsecond-level delays crucial for AI/HPC.
-*   **Scalability**: Supports thousands of nodes in a single subnet.
-*   **CPU Offload**: Frees up server CPU cycles for applications via RDMA.
-
 ### Use Cases
-*   **HPC**: Simulation, weather modeling, scientific research.
-*   **AI/ML**: Large Language Model training, distributed inference.
-*   **Cloud**: Hyperscale infrastructure requiring massive bandwidth.
+*   **HPC (High-Performance Computing)**: Simulation, weather modeling, scientific research. Requires massive bandwidth and low latency.
+*   **AI/ML**: Large Language Model (LLM) training, distributed inference. Relies on efficient All-Reduce operations.
+*   **Cloud & Hyperscale**: Specialized instances requiring guaranteed throughput and minimal jitter.
+*   **Storage**: NVMe-over-Fabrics (NVMe-oF) leverages IB for fast remote storage access.
+
+### Key Features
+*   **High Throughput**: Multi-gigabit speeds per lane (NDR 400Gb/s, XDR 800Gb/s).
+*   **Ultra-Low Latency**: Microsecond-level delays crucial for tightly coupled tasks.
+*   **CPU Offload**: Application bypass and RDMA free up server CPUs.
+*   **Reliability**: Hardware-based flow control (Credit-Based) prevents buffer overflows.
+*   **Scalability**: A single subnet can scale to tens of thousands of nodes.
 
 ---
 
 ## 🏛️ Module 2: InfiniBand Architecture
 
-Understanding the building blocks of an InfiniBand fabric is critical for design and troubleshooting.
+Understanding the layered architecture is critical for design and troubleshooting.
+
+### The InfiniBand Operations Layers
+Similar to the OSI model, InfiniBand defines specific layers:
+
+1.  **Physical Layer**:
+    *   **Role**: Defines mechanical/electrical specs for cables (copper DAC, active optical), connectors (QSFP, OSFP), and signaling rates.
+    *   **Function**: Signal encoding/decoding, link training.
+2.  **Link Layer**:
+    *   **Role**: Packet addressing (Local ID - LID), error detection (CRCs), flow control (Credit-Based), and switching.
+    *   **Function**: Ensures packet delivery between two devices in the same subnet.
+3.  **Network Layer**:
+    *   **Role**: Routing packets between different subnets using Global Routing Headers (GRH).
+    *   **Function**: Handles Global IDs (GUIDs) and inter-subnet routing (rare in pure HPC clusters).
+4.  **Transport Layer**:
+    *   **Role**: End-to-End communication services. Segmentation and reassembly.
+    *   **Function**: Manages connections, reliability (ACKs/NACKs), and RDMA operations.
 
 ### Core Components
-1.  **HCA (Host Channel Adapter)**: The network interface card (NIC) resident in the server (e.g., NVIDIA ConnectX series). Connects the compute node to the fabric.
-2.  **TCA (Target Channel Adapter)**: Connects storage or other I/O devices to the fabric.
-3.  **Switch**: Routes packets based on Local Identifiers (LIDs). Provides cut-through switching for minimal latency.
-4.  **Cable/Transceiver**: Copper (DAC) for short reach, Optical for long reach. Essential for signal integrity at high speeds.
-
-### Key Concepts
-*   **RDMA (Remote Direct Memory Access)**: Allows data transfer directly from the memory of one computer to another without involving either one's operating system. Zero-copy networking.
-*   **Subnet**: A set of IB nodes managed by a single Subnet Manager.
-*   **GUID (Global Unique Identifier)**: 64-bit address burned into the hardware (like a MAC address).
-*   **LID (Local Identifier)**: 16-bit address assigned by the Subnet Manager used for local routing.
+*   **HCA (Host Channel Adapter)**: The NIC in the server (e.g., ConnectX-7).
+*   **Switch**: Routes packets based on LIDs. Cut-through switching for minimal latency.
+*   **Subnet**: A set of nodes managed by a single Subnet Manager (SM).
+*   **RDMA**: Remote Direct Memory Access. Zero-copy transfer directly from app memory to app memory.
 
 ---
 
-## 🎮 Module 3: InfiniBand Fabric Management
+## 🌐 Module 3: Topologies & Routing
 
-An InfiniBand network is *managed*, meaning a central entity controls the routing and configuration.
+Choosing the right physical layout and routing algorithm is vital for performance.
 
-### Subnet Manager (SM)
-The **Subnet Manager** is the "brain" of the fabric. It must be running for traffic to flow.
-*   **Responsibilities**:
-    *   Discovering the topology.
-    *   Assigning LIDs to every port.
-    *   Calculating and installing routing tables (LFT/MFT) on switches.
-    *   Handling sweep and changes (nodes joining/leaving).
-*   **OpenSM**: The open-source implementation of the Subnet Manager.
+### Main InfiniBand Topologies
+| Topology | Description | Considerations |
+| :--- | :--- | :--- |
+| **Fat-Tree** | Tree structure where bandwidth increases towards the root. | **Pros**: Non-blocking, full bisection bandwidth, predictable. <br>**Cons**: Expensive (more cabling/switches). Best for general purpose HPC. |
+| **Torus / Mesh** | Nodes connected to neighbors in a ring/grid. | **Pros**: Low cable cost, good for neighbor-traffic. <br>**Cons**: Higher latency (hops), potential congestion. Used in specific scientific codes. |
+| **Dragonfly+** | Hierarchical topology (groups of fully connected routers). | **Pros**: Highly scalable, low diameter (fewer hops), cost-effective cables. <br>**Cons**: Complex routing requirement (Needs Adaptive Routing). |
 
-### UFM (Unified Fabric Manager)
-NVIDIA's advanced management platform for monitoring, managing, and optimizing InfiniBand networks.
-*    **Features**:
-    *   Automated provisioning and discovery.
-    *   Real-time telemetry and congestion monitoring.
-    *   Fabric health diagnostics.
-    *   "Cyber-AI" for anomaly detection.
+### Routing Engines
+The Subnet Manager calculates paths. Choosing the engine depends on the topology.
+*   **MinHop**: Finds shortest path. Simple, but not deadlock-free on complex topologies.
+*   **Up/Down**: Deadlock-free for general graphs (prevents routing "down" then "up"). Good default for non-Fat-Trees.
+*   **FatTree**: Specialized for Fat-Tree topologies. Balances traffic evenly across the root switches. **Recommended for Fat-Trees.**
+*   **LASH/DOR**: Specialized for Torus/Mesh topologies to avoid deadlocks.
 
 ---
 
-## 🛠️ Module 4: Fabric Bring-up & Monitoring
+## 🎮 Module 4: Fabric Management
 
-Practical skills for getting a fabric running and keeping it healthy.
+An InfiniBand network must be actively managed.
 
-### Bring-up Process
-1.  **Installation**: Install HCAs and cabling.
-2.  **Driver Setup**: Install **OFED (OpenFabrics Enterprise Distribution)** or **MLNX_OFED** stack.
-    *   *Command*: `/etc/init.d/openibd start`
-3.  **Start Subnet Manager**: Ensure OpenSM is running on a switch or a server node.
-    *   *Command*: `/etc/init.d/opensm start`
-4.  **Verification**: Check link status.
-    *   *Command*: `ibstat` (Should show State: Active, PhysState: LinkUp).
+### Management Concepts
+*   **Subnet Manager (SM)**: The entity that initializes the fabric.
+    *   **Discovery**: Finds all nodes.
+    *   **LID Assignment**: Assigns a unique 16-bit address to every port.
+    *   **Routing**: Calculates tables (LFT) for every switch.
+    *   **Sweeping**: Periodically checks for topology changes.
+*   **Subnet Administrator (SA)**: Database of path records (services queries from nodes).
 
-### Monitoring & Troubleshooting Tools
-Detailed command-line tools are essential for diagnostics.
-
-| Command | Purpose |
-| :--- | :--- |
-| **`ibstat`** | Shows HCA status, firmware version, LIDs, and port state. |
-| **`ibnetdiscover`** | Scans the fabric and lists all nodes and connections (Topology view). |
-| **`ibswitches`** | Lists all switches in the fabric. |
-| **`ibhosts`** | Lists all host nodes in the fabric. |
-| **`ibdiagnet`** | Comprehensive diagnostic tool; checks for errors, cable issues, and routing credit loops. |
-| **`ib_write_bw`** | Performance test: Measures RDMA Write **bandwidth**. |
-| **`ib_write_lat`** | Performance test: Measures RDMA Write **latency**. |
-| **`perfquery`** | Queries Performance Management (PortCounter) errors/counters. |
+### Fabric Initialization Process
+1.  **Sweep**: SM probes the network relative to itself.
+2.  **LID Assignment**: SM assigns base LIDs.
+3.  **Path Calculation**: SM runs the chosen Routing Engine (e.g., FatTree).
+4.  **Configuration**: SM writes LFTs (Linear Forwarding Tables) to all switches.
+5.  **Steady State**: Fabric is "Active".
 
 ---
 
-## 📚 curated References & Resources
+## 🛠️ Module 5: Bring-up, Monitoring & Utilities
 
-### Official Documentation & Specs
-*   **[InfiniBand Trade Association (IBTA)](https://www.infinibandta.org/specification-faq/)**: The official specs and architectural roadmap.
-*   **[NVIDIA Networking Docs (Mellanox)](https://docs.nvidia.com/networking/)**: Detailed user manuals for ConnectX, Quantum Switches, and UFM.
-*   **[OpenFabrics Alliance (OFA)](https://www.openfabrics.org/)**: Home of the open-source OFED stack.
+Practical skills for daily operations.
 
-### GitHub Repositories (Code & Tools)
-*   **[linux-rdma/opensm](https://github.com/linux-rdma/opensm)**: The official source for OpenSM. Essential for understanding how the fabric manager works under the hood.
-*   **[jumanjihouse/docker-opensm](https://github.com/jumanjihouse/docker-opensm)**: Run OpenSM in a lightweight Docker container. Great for lab environments.
-*   **[linux-rdma/ibsim](https://github.com/linux-rdma/ibsim)**: InfiniBand Fabric Simulator. Allows you to simulate large fabrics for testing routing algorithms without physical hardware.
-*   **[meier/opensm-smt](https://github.com/meier/opensm-smt)**: Subnet Monitoring Tools – extensions for better fabric visibility.
+### Basic Management Operations
+*   **Start/Stop SM**: `systemctl start opensm`
+*   **Check SM Status**: `sminfo` (shows priority, state, master SM GUID).
+*   **Change Priority**: Edit `/etc/rdma/opensm.conf` (higher priority becomes Master).
 
-### Community & Utility Tools
-*   **[ib-traffic-monitor](https://github.com/alanturing-ru/ib-traffic-monitor)**: TUI (Terminal UI) tool for monitoring IB traffic in real-time.
-*   **[Cluster-Shell](https://github.com/clush-project/clustershell)**: While not IB-specific, essential for running diagnostics (`ibstat`, `ibcheck`) across hundreds of nodes simultaneously.
+### Common Utilities & Usage
+
+| Category | Command | Usage |
+| :--- | :--- | :--- |
+| **Status** | `ibstat` | View HCA ports, state (Active/Down), physical state, and rate. |
+| **Status** | `ibv_devinfo` | Detailed HCA info (FW version, GUID). |
+| **Topology** | `ibnetdiscover` | Scans fabric and outputs connectivity map. |
+| **Topology** | `ibswitches` / `ibhosts` | Simple lists of fabric nodes. |
+| **Link Info** | `iblinkinfo` | Shows status of all links in the fabric (speed, width, errors). |
+| **Diagnostics** | `ibdiagnet` | **Systematic health check**. Checks counters, routing, cabling rules. |
+| **Perf** | `ib_write_bw` | Bandwidth benchmark between two nodes. |
+| **Perf** | `ib_write_lat` | Latency benchmark. |
+
+### Diagnostic Process
+1.  **Physical Link Check**: Run `iblinkinfo -e` to see error counters on links.
+2.  **Fabric Health**: Run `ibdiagnet`. Check `ibdiagnet.log` for "Symbol Errors" or "Link Down".
+3.  **Topology Check**: Run `ibnetdiscover` to verify all expected nodes are present.
+4.  **Route Verification**: Use `ibtracert <SLID> <DLID>` to see the path a packet takes.
+
+---
+
+## 📚 curated References
+
+*   **[InfiniBand Trade Association (IBTA)](https://www.infinibandta.org/)**: Specifications.
+*   **[Mellanox OFED User Manual](https://docs.nvidia.com/networking/category/mlnxofed)**: The definitive guide for driver stack and tools.
+*   **[OpenSM GitHub](https://github.com/linux-rdma/opensm)**: Source code for the Subnet Manager.
